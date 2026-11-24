@@ -126,8 +126,8 @@ def build_request(text, mode="preset", voice=None, style="", reference=None, str
     return {"model": MODELS[mode], "messages": messages, "audio": audio, "stream": stream}
 
 
-def _open(payload=None, path="/chat/completions"):
-    key, _ = credential()
+def _open(payload=None, path="/chat/completions", *, api_key=None):
+    key = credential()[0] if api_key is None else api_key
     data = json.dumps(payload, ensure_ascii=False).encode("utf-8") if payload is not None else None
     request = urllib.request.Request(BASE_URL + path, data=data, headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"})
     # Only retry opening a response. Never duplicate a stream after emitting audio.
@@ -246,7 +246,7 @@ def transcode(source, destination, speed=1.0, volume=1.0):
         raise MimoError("ffmpeg could not convert the generated audio.")
 
 
-def synthesize(text, out, *, mode="preset", voice=None, style="", reference=None, stream=None, cache=True, chunk_chars=400, on_chunk=None, speed=1.0, volume=1.0, opener=None):
+def synthesize(text, out, *, mode="preset", voice=None, style="", reference=None, stream=None, cache=True, chunk_chars=400, on_chunk=None, speed=1.0, volume=1.0, opener=None, api_key=None):
     if not 0.5 <= speed <= 2.5 or not 0 <= volume <= 3:
         raise MimoError("Speed or volume is outside the supported range.")
     out = Path(out).absolute()
@@ -259,7 +259,11 @@ def synthesize(text, out, *, mode="preset", voice=None, style="", reference=None
     texts = split_text(text, chunk_chars)
     template = build_request(texts[0], mode, voice, style, reference, stream)
     out.parent.mkdir(parents=True, exist_ok=True)
-    CACHE.mkdir(parents=True, exist_ok=True)
+    if cache:
+        CACHE.mkdir(parents=True, exist_ok=True)
+    if api_key is not None and opener is None:
+        def opener(payload):
+            return _open(payload, api_key=api_key)
     started = time.perf_counter()
     segments, pcm_parts = [], []
     key_config = {"model": MODELS[mode], "voice": voice, "style": style, "reference": reference_url(reference)[1] if reference else None, "stream": stream, "schema": 1}
