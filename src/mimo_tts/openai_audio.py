@@ -16,13 +16,13 @@ MODEL = 'gpt-realtime-2.1-mini'
 def _normalized(value):
     return ''.join(c.casefold() for c in value if c.isalnum())
 
-def pcm(text, voice='marin', style='', on_chunk=None, connect=None):
+def pcm(text, voice='marin', style='', on_chunk=None, connect=None, *, api_key=None):
     if connect is None:
         import websocket
         connect = websocket.create_connection
     started = time.perf_counter()
     ws = connect('wss://api.openai.com/v1/realtime?model='+MODEL,
-                 header={'Authorization': 'Bearer '+openai_key()}, timeout=60)
+                 header={'Authorization': 'Bearer '+(openai_key() if api_key is None else api_key)}, timeout=60)
     audio, transcript, first, completed = bytearray(), '', None, False
     try:
         ws.send(json.dumps({'type':'session.update','session':{'type':'realtime','model':MODEL,
@@ -58,7 +58,7 @@ def pcm(text, voice='marin', style='', on_chunk=None, connect=None):
     return bytes(audio), {'first_audio_seconds':first,'total_seconds':time.perf_counter()-started,'finish_reason':'completed'}
 
 def synthesize(text, out, *, mode='preset', voice=None, style='', reference=None, stream=None, cache=True,
-               chunk_chars=400, on_chunk=None, speed=1., volume=1., opener=None):
+               chunk_chars=400, on_chunk=None, speed=1., volume=1., opener=None, api_key=None):
     if mode=='clone' or reference is not None:
         raise MimoError('OpenAI cloning is not configured. Select the retained MiMo provider explicitly for cloning.')
     if not .5<=speed<=2.5 or not 0<=volume<=3: raise MimoError('Speed or volume is outside the supported range.')
@@ -67,7 +67,8 @@ def synthesize(text, out, *, mode='preset', voice=None, style='', reference=None
     voice=voice if voice in ('marin','cedar') else 'marin'
     parts=split_text(text,chunk_chars)
     target.parent.mkdir(parents=True,exist_ok=True)
-    root=CACHE/'openai';root.mkdir(parents=True,exist_ok=True)
+    root=CACHE/'openai'
+    if cache: root.mkdir(parents=True,exist_ok=True)
     started=time.perf_counter(); chunks=[]; segments=[]
     for index, part in enumerate(parts):
         identity=json.dumps({'provider':'openai','model':MODEL,'voice':voice,'style':style,'text':part,'schema':1},sort_keys=True,ensure_ascii=False)
@@ -81,7 +82,7 @@ def synthesize(text, out, *, mode='preset', voice=None, style='', reference=None
             if on_chunk:
                 for offset in range(0,len(data),16384): on_chunk(data[offset:offset+16384])
         else:
-            data,metrics=pcm(part,voice,style,on_chunk)
+            data,metrics=pcm(part,voice,style,on_chunk,api_key=api_key)
             if cache:
                 with tempfile.NamedTemporaryFile(dir=root,suffix='.wav',delete=False) as h: temporary=Path(h.name)
                 try: _write_wav(temporary,data);temporary.replace(saved)
