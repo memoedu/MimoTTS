@@ -53,6 +53,21 @@ class OpenAiAudioTests(unittest.TestCase):
                 openai_audio.pcm('Hello', connect=lambda *a, **k: ws)
             self.assertTrue(ws.closed)
 
+    def test_supplied_credential_and_cacheless_host(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            with patch.object(openai_audio, 'CACHE', root / 'cache'), patch.object(openai_audio, 'pcm',
+                    return_value=(b'\0\0' * 24, {'first_audio_seconds': 0})) as synth:
+                openai_audio.synthesize('Hello', root / 'voice.wav', cache=False, api_key='account-test')
+            self.assertEqual(synth.call_args.kwargs['api_key'], 'account-test')
+            self.assertFalse((root / 'cache').exists())
+        with patch.object(openai_audio, 'openai_key', side_effect=AssertionError), self.assertRaises(MimoError):
+            def connect(url, **options):
+                self.assertEqual(options['header']['Authorization'], 'Bearer account-test')
+                self.assertTrue(url.startswith('wss://api.openai.com/'))
+                return Socket([{'type': 'error'}])
+            openai_audio.pcm('Hello', connect=connect, api_key='account-test')
+
     def test_failed_generation_has_no_target_or_cache(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
