@@ -58,8 +58,11 @@ class OpenAiAudioTests(unittest.TestCase):
             root = Path(folder)
             with patch.object(openai_audio, 'CACHE', root / 'cache'), patch.object(openai_audio, 'pcm',
                     return_value=(b'\0\0' * 24, {'first_audio_seconds': 0})) as synth:
-                openai_audio.synthesize('Hello', root / 'voice.wav', cache=False, api_key='account-test')
+                def connect(*args, **kwargs):
+                    self.fail('PCM transport is mocked in this test')
+                openai_audio.synthesize('Hello', root / 'voice.wav', cache=False, api_key='account-test', connect=connect)
             self.assertEqual(synth.call_args.kwargs['api_key'], 'account-test')
+            self.assertIs(synth.call_args.kwargs['connect'], connect)
             self.assertFalse((root / 'cache').exists())
         with patch.object(openai_audio, 'openai_key', side_effect=AssertionError), self.assertRaises(MimoError):
             def connect(url, **options):
