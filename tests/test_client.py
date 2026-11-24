@@ -63,6 +63,20 @@ class ClientTests(unittest.TestCase):
                 client.synthesize("hello", "absent.wav", speed=0)
             provider.assert_not_called()
 
+    def test_supplied_credential_is_used_without_creating_a_cache(self):
+        audio = base64.b64encode(b"\x00\x00" * 24).decode()
+        event = {"choices": [{"delta": {"audio": {"data": audio}}, "finish_reason": "stop"}]}
+        stream = io.BytesIO(("data: " + json.dumps(event) + "\n\ndata: [DONE]\n\n").encode())
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            with patch.object(client, "CACHE", root / "cache"), patch.object(client, "credential") as configured, \
+                 patch.object(client.urllib.request, "urlopen", return_value=stream) as provider:
+                result = client.synthesize("Hello.", root / "voice.wav", api_key="site-test-only", cache=False)
+            configured.assert_not_called()
+            self.assertEqual(provider.call_args.args[0].get_header("Authorization"), "Bearer site-test-only")
+            self.assertFalse((root / "cache").exists())
+            self.assertEqual(result["voice"], "Mia")
+
     def test_english_only_and_voice_mapping(self):
         self.assertEqual(AnkiBackend.spoken(("猫 cat 狗 dog", "english")), "cat dog")
         self.assertEqual(AnkiBackend.spoken(("猫 cat", "bilingual")), "猫 cat")

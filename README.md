@@ -6,6 +6,8 @@
 
 `mimo-tts synthesize --provider openai --text 'Hello' --out D:\Artifacts\hello-openai.wav` 使用新接口；`--provider mimo` 或 Python 的 `mimo_tts.client.synthesize` 显式保留原接口。`TTS_PROVIDER=mimo` 可对当前进程选择原供应商。OpenAI 密钥按进程环境及 `OPENAI_ENV_FILE` 指向的外部文件读取，不复制进应用配置；本机文件为 `D:\AppData\OpenAI\.env.local`。
 
+多账号服务调用 MiMo 时，可向 `mimo_tts.client.synthesize` 传入该次调用的 `api_key`，并设置 `cache=False`，关闭共享音频缓存。
+
 OpenAI 使用 marin／cedar 音色，兼容旧音色设置时默认映射到 marin；保留原速度、音量、PCM 回调和文件产物。逐字转写校验失败会拒绝保存与缓存，不会改走 MiMo。OpenAI 路线未配置克隆能力；需要克隆时显式选择原 MiMo。下文 MiMo 专用模型、价格和克隆说明仅适用于原接口。
 
 可复用的 Python API、命令行及软件 TTS 接入。正式迁移已获授权，当前运行状态见对照汇总页。
