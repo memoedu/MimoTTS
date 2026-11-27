@@ -77,7 +77,7 @@ def native_canary():
 
 def clipper_canary():
     output = ROOT / "clipper.mp3"
-    request = {"text": "A careful comparison uses the same text.", "audio": str(output), "voice": "Mia", "rate": -3, "volume": -18, "pitch": 0, "replay": False, "play": False}
+    request = {"text": "A careful comparison uses the same text.", "audio": str(output), "voice": "Mia", "provider": "mimo", "rate": -3, "volume": -18, "pitch": 0, "replay": False, "play": False}
     helper = (Path(r"D:\Artifacts\MimoTTS\production\20260927\KnowledgeClipper\release") if args.production else BUILDS / "KnowledgeClipper" / "release") / "RemNoteQuickClipper.Desktop" / "Release" / "net8.0-windows" / "win-x64" / "helpers" / "stream_speech.py"
     runtime_python = Path(r"D:\Applications\RemNoteQuickClipperRuntime\edge-tts-7.2.8\Scripts\python.exe") if args.production else PYTHON
     run = subprocess.run([runtime_python, "-X", "utf8", helper, "--prepare"], input=json.dumps(request), text=True, encoding="utf-8", capture_output=True, timeout=180)

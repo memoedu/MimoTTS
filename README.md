@@ -10,6 +10,8 @@
 
 OpenAI Realtime 的 `mimo_tts.openai_audio.synthesize` 可通过 `connect` 为单次合成传入 WebSocket 连接函数。调用方应保留 OpenAI 服务端的 TLS 证书校验。
 
+KnowledgeClipper 的流式 helper 支持在合成请求中显式传入 `provider`（`mimo` 或 `openai`）。显式选择优先于本机默认服务，`audioComplete` 回报实际供应商和模型。省略该字段的客户端沿用其本机默认服务，历史重播直接读取录音。
+
 OpenAI 使用 marin／cedar 音色，兼容旧音色设置时默认映射到 marin；保留原速度、音量、PCM 回调和文件产物。逐字转写校验失败会拒绝保存与缓存，不会改走 MiMo。OpenAI 路线未配置克隆能力；需要克隆时显式选择原 MiMo。下文 MiMo 专用模型、价格和克隆说明仅适用于原接口。
 
 可复用的 Python API、命令行及软件 TTS 接入。正式迁移已获授权，当前运行状态见对照汇总页。
