@@ -54,6 +54,7 @@ class ClipperReplayTests(unittest.TestCase):
                     kwargs["on_chunk"](pcm[:174])
                     kwargs["on_chunk"](pcm[174:])
                     out.write_bytes(b"ID3 lossy export")
+                    return {'provider': 'mimo', 'model': 'mimo-v2.5-tts'}
                 request = dict(text="Public audio fixture", voice=voice, rate=rate, volume=volume,
                                pitch=0, ffplay="fake-player", audio=str(audio), replay=False,
                                play=True, losslessReplay=True)
@@ -97,6 +98,7 @@ class ClipperReplayTests(unittest.TestCase):
             def synth(text, out, **kwargs):
                 kwargs["on_chunk"](b"\x00\x01" * 30)
                 out.write_bytes(b"ID3 existing transport")
+                return {'provider': 'mimo', 'model': 'mimo-v2.5-tts'}
             request = dict(text="Public fixture", voice="Mia", rate=0, volume=0,
                            ffplay="fake-player", audio=str(audio), replay=False, play=True)
             first = self.run_request(request, synth)

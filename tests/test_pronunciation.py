@@ -79,6 +79,20 @@ class PronunciationTests(unittest.TestCase):
                     self.assertEqual(provider.call_args.args[0], "Public sample")
                     self.assertEqual(provider.call_args.kwargs["voice"], expected_voice)
 
+    def test_clipper_can_select_provider_independently_for_each_request(self):
+        for name, voice, model in (('mimo', '冰糖', 'mimo-v2.5-tts'), ('openai', 'cedar', 'gpt-realtime-2.1-mini')):
+            with self.subTest(provider=name):
+                request = dict(text='Public sample', voice=voice, provider=name, audio='sample.mp3', replay=False, play=False)
+                with patch.object(adapters.sys, 'argv', ['helper']), \
+                     patch.object(adapters.sys, 'stdin', io.StringIO(json.dumps(request))), \
+                     patch.object(adapters, 'selected_provider', side_effect=AssertionError('global provider was read')), \
+                     patch.object(adapters, 'emit') as emit, \
+                     patch.object(adapters, 'synthesize', return_value={'provider': name, 'model': model}) as synthesize:
+                    adapters.clipper_main()
+                    self.assertEqual(synthesize.call_args.kwargs['provider'], name)
+                    self.assertEqual(synthesize.call_args.kwargs['voice'], voice)
+                    emit.assert_called_once_with('audioComplete', provider=name, model=model)
+
 
 if __name__ == "__main__":
     unittest.main()

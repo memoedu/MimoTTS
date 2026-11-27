@@ -35,8 +35,8 @@ def runtime_environment():
     return environment
 
 
-def selected_voice(text, old_voice=""):
-    if selected_provider() == 'openai':
+def selected_voice(text, old_voice="", *, provider=None):
+    if (provider or selected_provider()) == 'openai':
         voice = old_voice.removeprefix('openai-').removeprefix('mimo-')
         return voice if voice in ('marin','cedar') else 'marin'
     if old_voice in VOICES:
@@ -51,7 +51,7 @@ def emit(name, **extra):
         print(json.dumps({"event": name, "at": datetime.now(timezone.utc).isoformat(), **extra}), flush=True)
 
 
-def clipper_main():
+def clipper_main(*, require_provider=False):
     if "--prepare" in sys.argv:
         emit("helperReady")
     transport = None
@@ -115,8 +115,15 @@ def clipper_main():
                         player.stdin.write(data)
             # Replay deliberately does not emit audioComplete or invoke the API.
         else:
-            options = {'opener': transport.open} if transport and request.get('preconnect', False) else {}
-            synthesize(request["text"], audio, voice=selected_voice(request["text"], request["voice"]), style=request.get("style", ""), on_chunk=chunk, speed=rate, volume=volume, **options)
+            provider = request.get('provider')
+            if provider is None and not require_provider:
+                provider = selected_provider()
+            if provider not in ('mimo', 'openai'):
+                raise MimoError('Unknown TTS provider.')
+            options = {'opener': transport.open} if provider == 'mimo' and transport and request.get('preconnect', False) else {}
+            text = request['text']
+            result = synthesize(text, audio, provider=provider, voice=selected_voice(text, request['voice'], provider=provider),
+                                style=request.get('style', ''), on_chunk=chunk, speed=rate, volume=volume, **options)
             if lossless:
                 if not pcm or len(pcm) % 2:
                     raise MimoError("Streaming PCM recording is incomplete.")
@@ -125,7 +132,7 @@ def clipper_main():
                 with sidecar.open("xb") as saved:
                     saved.write(json.dumps(metadata).encode("utf-8") + b"\n")
                     saved.write(pcm)
-            emit("audioComplete")
+            emit('audioComplete', provider=result['provider'], model=result['model'])
         if player:
             player.stdin.close()
             player.stderr.read()
@@ -231,7 +238,7 @@ class OpenFocusVoice:
             self.process.wait()
 
 
-def main():
+def main(*, require_provider=False):
     try:
         if len(sys.argv) > 1 and sys.argv[1] == "openfocus":
             text = sys.stdin.read()
@@ -242,7 +249,7 @@ def main():
                 sys.stdin = __import__("io").StringIO(json.dumps(request))
                 clipper_main()
         else:
-            clipper_main()
+            clipper_main(require_provider=require_provider)
     except Exception as exc:
         print(str(exc) if isinstance(exc, MimoError) else type(exc).__name__ + ": MiMo audio failed", file=sys.stderr)
         return 1
