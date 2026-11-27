@@ -10,6 +10,12 @@
 
 OpenAI Realtime 的 `mimo_tts.openai_audio.synthesize` 可通过 `connect` 为单次合成传入 WebSocket 连接函数。调用方应保留 OpenAI 服务端的 TLS 证书校验。
 
+### SpeechKit 的 Mac 制件入口
+
+部署同版本仓库到 Mac 后，可为单次 Windows `speech-kit ... tts synthesize --force-refresh` 设置 `SPEECH_KIT_MAC_CONFIG`，配置文件只包含 `host`、`python`、`source`、`ffmpeg_directory` 和可选 `ssh`。`source` 指向 Mac 仓库的 `src`。此入口处理一个现有 SpeechKit 分段（最多 400 字符）。普通缓存调用和实时 PCM 调用沿用原路径。
+
+Windows 用已配置的推理项目签发短期 Realtime 会话。Mac 通过同一个 WebSocket 语音实现接收音频，按原音色、语速和输出格式编码。Windows 按请求和音频 SHA-256 核对回传并写入原 SpeechKit 清单。切换只作用于当次进程，连接失败时保留失败状态，便于核对后再决定是否发起另一次请求。 [Realtime 短期会话](https://developers.openai.com/api/reference/resources/realtime/subresources/client_secrets/methods/create) · [WebSocket](https://developers.openai.com/api/docs/guides/voice-websockets)
+
 KnowledgeClipper 的流式 helper 支持在合成请求中显式传入 `provider`（`mimo` 或 `openai`）。显式选择优先于本机默认服务，`audioComplete` 回报实际供应商和模型。省略该字段的客户端沿用其本机默认服务，历史重播直接读取录音。
 
 OpenAI 使用 marin／cedar 音色，兼容旧音色设置时默认映射到 marin；保留原速度、音量、PCM 回调和文件产物。逐字转写校验失败会拒绝保存与缓存，不会改走 MiMo。OpenAI 路线未配置克隆能力；需要克隆时显式选择原 MiMo。下文 MiMo 专用模型、价格和克隆说明仅适用于原接口。
