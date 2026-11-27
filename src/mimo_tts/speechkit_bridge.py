@@ -31,8 +31,17 @@ def synthesize_compatible(*, text, output, profile, voice, speech_rate, instruct
     # output, matching SpeechKit's pre-existing overwrite contract.
     with tempfile.TemporaryDirectory(dir=target.parent, prefix="speechkit-mimo-") as temp:
         prepared = Path(temp) / ("audio" + target.suffix)
-        result = synthesize(text, prepared, provider=provider, voice=selected, speed=1 + rate / 100,
-                            style=style or "", cache=not force_refresh)
+        mac_config = os.environ.get('SPEECH_KIT_MAC_CONFIG')
+        if provider == 'openai' and force_refresh and mac_config:
+            from .mac_render import render
+            try:
+                settings = json.loads(Path(mac_config).read_text(encoding='utf-8-sig'))
+            except (OSError, ValueError):
+                raise MimoError('Could not read the Mac SpeechKit configuration.') from None
+            result = render(text, prepared, voice=selected, speed=1 + rate / 100, style=style or '', settings=settings)
+        else:
+            result = synthesize(text, prepared, provider=provider, voice=selected, speed=1 + rate / 100,
+                                style=style or "", cache=not force_refresh)
         probe = subprocess.run([ffprobe, "-v", "error", "-show_format", "-show_streams", "-of", "json", str(prepared)],
                                capture_output=True, text=True, timeout=30,
                                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
